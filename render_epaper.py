@@ -103,6 +103,8 @@ def render(data, out):
     pts = [(sx(i), sy(p)) for i, p in gueltig]
     for k in range(len(pts) - 1):
         i_a, i_b = gueltig[k][0], gueltig[k + 1][0]
+        if i_b - i_a > 1:   # Luecke: keine Verbindung ueber unbekannte Tage
+            continue
         if gesch[i_a] or gesch[i_b]:
             dashed_line(d, pts[k], pts[k + 1], width=4)
         else:
@@ -117,6 +119,7 @@ def render(data, out):
         d.text((x, B + 32), f"{datum:%d.%m.}", font=font(14), fill=0, anchor="ma")
         p = preise[i]
         if p is None:
+            d.text((x, B - 8), "k. A.", font=font(14), fill=0, anchor="mb")
             continue
         y0 = sy(p)
         r = 9 if i in (imin, imax) else 6
@@ -126,15 +129,16 @@ def render(data, out):
             d.ellipse([x - r, y0 - r, x + r, y0 + r], fill=0)
         if i == imin:   # Minimum: Kasten um den Wert, unterhalb
             txt = fmt(p)
-            bb = d.textbbox((x, y0 + 16), txt, font=font(20, True), anchor="ma")
+            ty, anc = (y0 + 16, "ma") if y0 + 46 < B else (y0 - 16, "mb")
+            bb = d.textbbox((x, ty), txt, font=font(20, True), anchor=anc)
             d.rectangle([bb[0] - 5, bb[1] - 3, bb[2] + 5, bb[3] + 3], fill=0)
-            d.text((x, y0 + 16), txt, font=font(20, True), fill=1, anchor="ma")
+            d.text((x, ty), txt, font=font(20, True), fill=1, anchor=anc)
         else:
             f_ = font(20, True) if i == imax else font(18)
             d.text((x, y0 - 14), fmt(p), font=f_, fill=0, anchor="mb")
 
     stand = data.get("stand", dt.date.today().strftime("%d.%m.%Y"))
-    d.text((W - 10, H - 4), f"Quelle: Ostrom-Prognose · Stand {stand}", font=font(12), fill=0, anchor="rb")
+    d.text((W - 10, H - 4), f"Quelle: {data.get('quelle', 'Ostrom-Prognose')} · Stand {stand}", font=font(12), fill=0, anchor="rb")
     img.save(out, optimize=True)
 
 if __name__ == "__main__":
